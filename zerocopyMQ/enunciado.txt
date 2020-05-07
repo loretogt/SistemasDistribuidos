@@ -1,0 +1,125 @@
+Diseño de un sistema de colas de mensajes con zerocopy (zerocopyMQ)
+
+Se trata de un proyecto práctico de carácter individual cuyo plazo de entrega termina el 10 de mayo.
+Objetivo de la práctica
+
+El objetivo principal es que el alumno pueda ver de una forma aplicada qué infraestructura de comunicación requiere la construcción de un sistema de colas de mensajes con una funcionalidad básica haciendo especialmente énfasis en los aspectos de eficiencia en la transmisión y en el uso de la técnica de zerocopy. Para ello, se plantea desarrollar un esquema de este tipo, al que denominaremos zerocopyMQ, con los siguientes requisitos específicos que deben ser obligatoriamente satisfechos:
+La práctica debe funcionar tanto en local como en remoto.
+Se utilizará un esquema con un único proceso que actúa como broker proporcionando el desacoplamiento espacial y temporal ofrecido por los sistemas de colas de mensajes. El broker se encargará de gestionar las colas y almacenar los mensajes dirigidos a las mismas. Gracias al desacoplamiento espacial, los procesos que usan este sistema no se necesitan conocer ni interaccionar entre sí, sino que se comunicarán únicamente con el broker haciendo referencia al nombre de la cola de mensajes correspondiente. Asimismo, el almacenamiento de los mensajes de las colas por parte del broker proporcionará el desacoplamiento temporal requerido.
+Para facilitar el desarrollo de la práctica, se proporciona una implementación de un tipo de datos que actúa como un diccionario, permitiendo asociar un valor con una cadena de caracteres que actúa de clave, y de un tipo que gestiona una cola. Se deben usar obligatoriamente ambos tipos de datos a la hora de implementar la práctica.
+El broker gestionará los mensajes que las aplicaciones envían a las colas sin realizar ninguna manipulación sobre el contenido de los mismos. Las aplicaciones que usen este sistema deberían definir el formato de los mensajes enviados según su conveniencia. Los mensajes, enviados por las aplicaciones, por tanto, pueden ser de carácter binario por lo que se requiere conocer explícitamente su tamaño.
+El diseño del sistema no debe establecer ninguna limitación en el número de colas existentes en el sistema ni en el número de mensajes almacenados en cada cola.
+Con respecto al tamaño del mensaje enviado por una aplicación, está limitado a 232 mientras que el del nombre de la cola a 216 incluyendo el carácter nulo asociado al nombre. Recuerde que debe manejar adecuadamente las cadenas de caracteres asegurándose de que terminan en un carácter nulo.
+Se debe asegurar un comportamiento zerocopy tanto en la gestión de los mensajes como en la de los nombres de cola:
+No se pueden realizar copias ni en los clientes ni en el broker de los mensajes enviados por las aplicaciones ni de los nombres de cola.
+Para evitar la fragmentación en la transmisión, tanto los clientes como el broker mandarán toda la información con un único envío.
+Debe optimizarse el uso de ancho de banda. Así, por ejemplo, para enviar un mensaje de 1 byte a una cola cuyo nombre solo tiene un carácter, no pueden enviarse más de 32 bytes.
+El sistema debe ser diseñado para trabajar correctamente en un entorno heterogéneo.
+Como parte del desarrollo del proyecto, el alumno tendrá que enfrentarse al diseño del protocolo de comunicación del sistema, disponiendo de total libertad para definir todos los aspectos requeridos por el mismo: qué intercambio de mensajes se lleva a cabo en cada operación, el formato de esos mensajes, si se usan conexiones persistentes entre los procesos y el broker, si el servidor es secuencial, concurrente o basado en threads, etcétera.
+
+En cuanto a las tecnologías usadas en la práctica, se programará en el lenguaje C utilizando sockets de tipo stream y se supondrá un entorno de máquinas heterogéneas.
+
+Se van a distinguir tres fases en el desarrollo de la práctica:
+
+Sistema en el que las operaciones de lectura de una cola son solo no bloqueantes. Con esta fase puede alcanzarse una nota de 6 puntos.
+Sistema que incorpora también operaciones de lectura bloqueantes, que otorga un máximo de 3 puntos adicionales.
+Una fase final que plantea analizar e implementar aspectos de tolerancia a fallos en el sistema, que puede proporcionar el 1 punto restante. Nótese que en las dos fases previas no se tendrá en cuenta la posibilidad de que alguno de los procesos involucrados en una comunicación se caiga, siendo en esta fase cuando se afronta este tipo de problemas.
+API ofrecida a las aplicaciones
+
+En esta sección, se describen las 4 operaciones que se les proporcionan a las aplicaciones (están declaradas en el fichero zerocopyMQ.h, que no se puede modificar y que está almacenado en el directorio correspondiente a la biblioteca (libzerocopyMQ) y accesible desde el directorio del programa de test de la práctica mediante el uso de un enlace simbólico.
+Las operaciones de creación y destrucción especifican únicamente el nombre de la cola, cuya longitud está limitada a 216 incluyendo el carácter nulo final, devolviendo 0 si la operación se realizó satisfactoriamente y un valor negativo en caso contrario (por ejemplo, si se intenta crear una cola que ya existe o destruir una no existente). Con respecto a qué caracteres pueden aparecer en el nombre de las colas, el enunciado no plantea ninguna restricción, pero para la evaluación se usarán identificadores alfanuméricos.
+
+int createMQ(const char *cola);
+int destroyMQ(const char *cola);
+Nótese que se va a implementar un modo de acción inmediato en la operación de destrucción eliminándose directamente todos los mensajes almacenados en la cola. Se podría haber planteado un modo diferido (seleccionable mediante un parámetro de la operación) en el que se retrasase la destrucción final de la cola hasta que se hubieran leído todos los mensajes de la misma, no permitiendo, mientras tanto, añadir nuevos.
+La operación de escritura/envío a la cola especifica el nombre de la cola y las características del mensaje a enviar, cuyo tamaño viene especificado por el último parámetro (máximo 232), devolviendo 0 si la operación se realizó satisfactoriamente y un valor negativo en caso contrario (por ejemplo, si se intenta escribir en una cola que no existe). Si el tamaño es 0, la operación no realizará ninguna labor, pero no se se considerará que se trata de un error.
+
+int put(const char *cola, const void *mensaje, uint32_t tam);
+La operación de lectura/recepción de la cola especifica el nombre de la cola como parámetro de entrada y, a continuación dos parámetros de salida vinculados con el mensaje recibido:
+El parámetro mensaje, a diferencia de lo que ocurre con read o recv, no es un puntero a un buffer especificado por el módulo llamante donde se depositará el nuevo mensaje, sino que en él se devuelve el puntero al buffer que esta función ha habilitado en el heap para almacenar el mensaje.
+El parámetro tam devuelve el tamaño del mensaje recibido.
+Nótese que el módulo que ha invocado esta operación get debería llamar a free cuando termine de procesar el mensaje para liberar la memoria asociada al mismo. El último parámetro especifica si la lectura es bloqueante (aspecto que se implementa en la segunda fase) o no. Nótese que una lectura no bloqueante devolverá un 0 en el parámetro tam si no hay ningún mensaje en la cola. La función retornará 0 si la operación se realizó satisfactoriamente y un valor negativo en caso contrario (por ejemplo, si se intenta leer de una cola que no existe). Si en el segundo o tercer parámetro se recibe un valor nulo, se procederá con la lectura normal pero, evidentemente, no se asignará un valor al parámetro correspondiente.
+int get(const char *cola, void **mensaje, uint32_t *tam, bool blocking);
+Téngase en cuenta que se ha optado por no incorporar operaciones para que una aplicación inicie o finalice su interacción con el sistema de colas. Si en el diseño de su práctica requiere que alguna acción se realice solo una vez al principio puede llevarla a cabo en la primera llamada a una de estas operaciones.
+Arquitectura software del sistema
+
+Hay dos partes claramente diferenciadas en el sistema:
+El broker (fichero fuente broker/broker.c) que incluye toda la funcionalidad del sistema, implementando las operaciones descritas en el apartado previo y gestionando las colas de mensajes. Recibe como argumento el número del puerto por el que prestará servicio.
+La biblioteca (fichero fuente libzerocopyMQ/libzerocopyMQ.c) que usan los procesos que quieren interaccionar con el broker, ofreciéndoles las 4 funciones explicadas en la sección anterior. Este módulo recibirá la dirección del broker como dos variables de entorno:
+BROKER_HOST: nombre de la máquina donde ejecuta el broker.
+BROKER_PORT: número de puerto TCP por el que está escuchando.
+Para facilitar la reutilización de código entre ambos módulos, se incluyen los ficheros comun.c y comun.h, que están presentes en los directorios de ambos módulos (broker y libzerocopyMQ, respectivamente) mediante el uso de enlaces simbólicos (nota: asegúrese de que durante la manipulación de los ficheros de la práctica no pierde por error estos enlaces), donde puede incluir funcionalidad común a ambos módulos si lo considera oportuno.
+En el directorio broker se proporciona la implementación de un tipo diccionario y de un tipo cola. Se deben usar obligatoriamente ambos tipos para implementar la práctica. Asimismo, están disponibles ejemplos de uso (demos) de ambos tipos.
+
+En el directorio test se encuentra un programa que usa la biblioteca (libzerocopyMQ.so) y que ofrece una interfaz de texto para solicitar las 4 operaciones que proporciona el sistema.
+
+Ejecución de pruebas del sistema
+
+Para probar la práctica, debería, en primer lugar, arrancar el broker especificando el puerto de servicio:
+triqui3: cd broker
+triqui3: make
+triqui3: ./broker 12345
+A continuación, puede arrancar instancias del programa test en la misma máquina o en otras:
+triqui4: cd test
+triqui4: make
+triqui4: export BROKER_PORT=12345
+triqui4: export BROKER_HOST=triqui3.fi.upm.es
+triqui4: ./test
+Una instancia adicional:
+triqui2: cd test
+triqui2: make
+triqui2: export BROKER_PORT=12345
+triqui2: export BROKER_HOST=triqui3.fi.upm.es
+triqui2: ./test
+Descripción de la primera fase
+
+Esta primera versión permite obtener una nota máxima de 6 en la práctica. En esta fase, no se implementarán las lecturas bloqueantes, ni se tendrá en cuenta la posible caída de los procesos mientras están involucrados en una comunicación.
+Por lo que se refiere al broker, se trata del clásico servidor de tipo stream que debe gestionar una estructura de datos basada en los tipos suministrados para almacenar el estado de las colas y que puede recibir mensajes vinculados con las 4 operaciones anteriormente explicadas:
+
+Creación de una cola: añadiría una nueva entrada a la estructura de datos de las colas.
+Escritura de un mensaje: guardaría el mensaje en la cola correspondiente.
+Lectura de un mensaje: obtendría el primer mensaje en orden de llegada de la cola correspondiente. En caso de no haber ninguno, se responde indicando esta circunstancia.
+Destrucción de una cola: eliminaría esa entrada de la estructura de datos de las colas, borrando todos los mensajes presentes en la misma.
+Puede tomar como punto de partida para implementar el broker el código suministrado como ejemplos de uso de sockets. Concretamente, puede utilizar el ejemplo de servidor que aparece en uno de los cuatro primeros ejemplos dependiendo de si ha optado por un servidor secuencial, concurrente basado en procesos, concurrente basado en threads o dirigido por eventos.
+Con respecto a la biblioteca (libzerocopyMQ.so), se comporta como el típico cliente de sockets stream, encargándose, básicamente, de crear los mensajes de protocolo asociados a las cuatro operaciones, enviarlos con una sola operación y recibir las respuestas. Asismimo, tendrá que realizar la gestión de memoria dinámica requerida por los mensajes.
+
+Puede tomar como base el cliente suministrado como primer ejemplo en la página web anteriormente reseñada.
+
+Recuerde que, como se analiza y resuelve en el séptimo ejemplo de esa referencia, con los sockets stream puede ocurrir que si se realiza un envío de una cierta cantidad de datos en el emisor y se lleva a cabo una recepción en el destinatario de la misma cantidad, esa recepción puede obtener solo parte de los datos, siendo necesario aplicar alguna de las técnicas presentadas en esos ejemplos.
+
+Con respecto a la implementación de las técnicas de zerocopy, puede revisar esta referencia. Dado que no se va realizar la transferencia de datos almacenados en ficheros, de estos ejemplos puede centrarse en el uso de la función writev, que permite el envío de información almacenada en distintas zonas de memoria (en el caso de la práctica, el nombre de la cola y el contenido de un mensaje) con una sola operación evitando la fragmentación de los mensajes y manteniendo el requisito del zerocopy. Nótese que no es necesario usar readv para leer los datos transmitidos mediante writev puesto que estos viajan de forma convencional. De hecho, en la recepción, el uso de varias llamadas a read|recv no rompe el requisito del zerocopy.
+
+Descripción de la segunda fase
+
+Esta versión puede otorgar hasta 3 puntos adicionales. En esta fase hay que incluir la lectura bloqueante que requiere que el broker almacene información de qué procesos han solicitado una operación de lectura bloqueante sobre una cola estando esta vacía para poder enviarles los mensajes en orden de llegada, tanto en lo que se refiere a los mensajes como a los procesos, cuando estos lleguen.
+Puede implementar esta funcionalidad como considere oportuno, pero evitando cualquier tipo de mecanismo de espera activa. Una posibilidad es no responder inmediatamente al cliente que solicita la operación bloqueante si no hay mensajes, con lo que este se quedaría esperando la respuesta. En el momento que llegue un mensaje de otro cliente a la cola correspondiente, se le enviaría al primer cliente desbloqueándolo.
+
+En caso de que se destruya una cola que tiene pendientes lectores bloqueados, hay que asegurarse de que esos lectores se desbloqueen y la llamada get en la que estaban bloqueados devuelva un error (igual que lo habría hecho si se hubiera detectado al principio que la cola no existe).
+
+Descripción de la tercera fase
+
+Esta versión puede otorgar hasta 1 punto adicional. Esta fase se centra en el comportamiento del sistema ante la caída de algunos procesos.
+Téngase en cuenta que el protocolo TCP subyacente asegura la correcta transmisión si ninguno de los procesos involucrados se cae, pero, en caso de caída de un nodo, pueden surgir distintos escenarios, dependiendo, entre otras cosas, de cómo se haya implementado el protocolo de comunicación.
+
+El escenario de error que se va a tratar en esta fase aparece cuando se cae un cliente que está esperando por un mensaje solicitado mediante una lectura bloqueante. Este caso es relativamente probable puesto que un cliente podría estar esperando por un mensaje durante un tiempo ilimitado.
+
+Para afrontar este escenario, realice las pruebas pertinentes, tanto en local como en remoto, para comprobar qué sucede con su versión del broker cuando intenta enviar un mensaje a un cliente que en su momento estaba bloqueado en una lectura y, posteriormente, se cayó. El código del broker que envía el mensaje recién recibido al primer proceso lector en espera debe ser capaz de detectar esta circunstancia (deberá cambiar la versión de la fase 2 si no se detecta esta circunstancia) y, en caso de error al intentar enviárselo, debe probar con los sucesivos lectores, almacenándose el mensaje en la estructura de datos si no ha podido ser entregado.
+
+Material de apoyo de la práctica
+
+El material de apoyo de la práctica se encuentra en este enlace.
+Al descomprimir el material de apoyo se crea el entorno de desarrollo de la práctica, que reside en el directorio: $HOME/DATSI/SD/zerocopyMQ.2020/.
+
+Entrega de la práctica
+
+Se realizará en la máquina triqui, usando el mandato:
+entrega.sd zerocopyMQ.2020
+Este mandato recogerá los siguientes ficheros:
+
+autores Fichero con los datos de los autores:
+DNI APELLIDOS NOMBRE MATRÍCULA
+memoria.txt Memoria de la práctica. En ella se deben comentar los aspectos del desarrollo de su práctica que considere más relevantes. Asimismo, puede exponer los comentarios personales que considere oportuno.
+broker/broker.c Código del broker.
+broker/comun.h Fichero de cabecera donde puede incluir, si lo precisa, definiciones comunes a los dos módulos, es decir, al broker y a la biblioteca.
+broker/comun.c Fichero donde puede incluir, si lo precisa, implementaciones comunes a los dos módulos, es decir, al broker y a la biblioteca.
+libzerocopyMQ/libzerocopyMQ.c Código de la biblioteca.
