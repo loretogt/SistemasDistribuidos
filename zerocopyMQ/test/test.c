@@ -8,12 +8,21 @@
 #include "zerocopyMQ.h"
 
 int main(int argc, char *argv[]) {
-    int n;
+    int n, lncola;
     char *op, *cola;
     do {
+        printf("\nIntroduzca la longitud del nombre de la cola (ctrl-D para terminar): ");
+        n=scanf("%d", &lncola);
+        if (n==EOF) continue;
+        if (n==0) {
+		scanf("%*s");
+		continue;
+	}
         printf("\nSeleccione nombre de cola y operación (ctrl-D para terminar)\n\tC:create|D:destroy|P:put\n\tG:get no bloqueante|B:get bloqueante\n");
-        op=cola=NULL;
-        n=scanf("%ms%ms", &cola, &op);
+        op=malloc(2);
+	cola=malloc(lncola+1);
+	// posible buffer overflow al leer el nombre de la cola
+        n=scanf("%s%1s", cola, op);
         if (n==2) {
             switch(op[0]) {
                 case 'C':
@@ -37,11 +46,11 @@ int main(int argc, char *argv[]) {
                     else {
                         printf("lectura de la cola %s correcta\n", cola);
                         if (tam) {
-                            char *fich=NULL;
+                            char *fich=malloc(255+1);
                             int fd;
                             do {
                                 printf("Introduzca el nombre del fichero para almacenar el mensaje: ");
-                                n=scanf("%ms", &fich);
+                                n=scanf("%""255""s", fich);
                                 fd = creat(fich, 0644);
                                 free(fich);
 		            } while (fd == -1);
@@ -53,13 +62,13 @@ int main(int argc, char *argv[]) {
                     }
                     break;
                 case 'P': ;
-                    char *fich=NULL;
+                    char *fich=malloc(255+1);
                     int fd;
                     struct stat st;
                     void *f;
                     do {
                         printf("Introduzca el nombre del fichero que contiene el mensaje: ");
-                        n=scanf("%ms", &fich);
+                        n=scanf("%""255""s", fich);
                         fd = open(fich, O_RDONLY);
                         free(fich);
 		    } while (fd == -1);
