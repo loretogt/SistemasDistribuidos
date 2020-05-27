@@ -9,7 +9,6 @@ public class VenusFile {
     public static final String cacheDir = "Cache/";
     public VenusFile(Venus venus, String fileName, String mode) throws RemoteException, IOException, FileNotFoundException {
         File local = new File(cacheDir+fileName);
-        
         if(!local.exists()){
            venus.getVi().download(cacheDir+fileName, mode);
            ViceReaderImpl vReader = new ViceReaderImpl(cacheDir+fileName,mode);

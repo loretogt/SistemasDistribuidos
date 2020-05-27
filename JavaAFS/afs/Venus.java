@@ -16,7 +16,6 @@ public class Venus {
         this.port= Integer.parseInt(System.getenv().get("REGISTRY_PORT"));
         this.blocksize= Integer.parseInt(System.getenv().get("BLOCKSIZE"));
         this.vi=(Vice)Naming.lookup("//" + this.host + ":" + this.port + "/AFS");
-        vi.
     }
 
     public String getHost(){
