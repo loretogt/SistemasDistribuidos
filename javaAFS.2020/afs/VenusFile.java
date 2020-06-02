@@ -11,6 +11,7 @@ public class VenusFile {
     int excep=1;
     ViceReader vReader;
     RandomAccessFile fich;
+    boolean escrito;
     public VenusFile(final Venus venus, final String fileName, final String modo) throws RemoteException, IOException, FileNotFoundException {
         final File local = new File(cacheDir+fileName);
         try{
@@ -40,12 +41,14 @@ public class VenusFile {
             fich = new RandomAccessFile(cacheDir+fileName, modo);     
             vReader.close();   
           } 
-        }
+    }
+
     public int read(final byte[] b) throws RemoteException, IOException {
         return fich.read(b);
     }
     public void write(final byte[] b) throws RemoteException, IOException {
-        
+        escrito=true;
+        fich.write(b);
     }
     public void seek(final long p) throws RemoteException, IOException {
         fich.seek(p);

@@ -17,7 +17,8 @@ public class ViceImpl extends UnicastRemoteObject implements Vice {
        
     }
     public ViceWriter upload(String fileName, String modo /* añada los parámetros que requiera */)
-          throws RemoteException {
-        return null;
+          throws RemoteException ,FileNotFoundException {
+            ViceWriter viceWriterU= new ViceWriterImpl(fileName, modo);
+            return viceWriterU;
     }
 }
