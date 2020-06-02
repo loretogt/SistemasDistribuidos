@@ -1,1 +1,0 @@
-../cliente1/ejecuta_test.sh

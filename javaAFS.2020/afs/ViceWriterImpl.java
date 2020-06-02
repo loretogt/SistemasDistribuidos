@@ -22,5 +22,8 @@ public class ViceWriterImpl extends UnicastRemoteObject implements ViceWriter {
     public void close() throws RemoteException, IOException {
         file.close();
     }
+    public void setLength (long length) throws IOException{
+        file.setLength(length);
+    }
 }       
 

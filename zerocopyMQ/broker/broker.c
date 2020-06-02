@@ -1,4 +1,4 @@
-#include <stdio.h>
+#Include <Stdio.h>
 #include "comun.h"
 #include "diccionario.h"
 #include "cola.h"
