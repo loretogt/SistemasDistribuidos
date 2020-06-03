@@ -9,5 +9,6 @@ public interface ViceWriter extends Remote {
     public void close() throws RemoteException, IOException;
     /* añada los métodos remotos que requiera */
 	public void setLength(long tamNuevo) throws IOException;
+	public void seek(long i) throws IOException;
 }       
 

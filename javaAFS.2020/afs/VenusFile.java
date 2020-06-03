@@ -12,8 +12,8 @@ public class VenusFile {
     RandomAccessFile fich;
     // variables para cuando escribes o cambia el tamaño
     boolean escrito;
-    long tamViejo;
-    long tamNuevo;
+    long tamViejo = 0;
+   // long tamNuevo = 0;
     // variables para guardar la info
     Venus venus;
     String fileName;
@@ -35,11 +35,12 @@ public class VenusFile {
                     fich.write(array);
                 }
                 tamViejo = fich.length();
-                tamNuevo= tamViejo;
+              //  tamNuevo= tamViejo;
                 fich.seek(0);
                 vReader.close();
             } else { // si si que está en cache
                 fich = new RandomAccessFile(cacheDir + fileName, modo);
+                tamViejo = fich.length();
             }
         } catch (FileNotFoundException e) {
             vReader = venus.getVi().download(fileName, modo); // si no exite al llamar al download saltara en
@@ -50,7 +51,7 @@ public class VenusFile {
                 fich.write(array);
             }
             tamViejo = fich.length();
-            tamNuevo= tamViejo;
+           // tamNuevo= tamViejo;
             fich.close();
             fich = new RandomAccessFile(cacheDir + fileName, modo);
             vReader.close();
@@ -64,7 +65,7 @@ public class VenusFile {
     public void write(final byte[] b) throws RemoteException, IOException {
         fich.write(b);
         escrito = true;
-        tamNuevo = fich.length();
+       // tamNuevo = fich.length();
     }
 
     public void seek(final long p) throws RemoteException, IOException {
@@ -73,28 +74,41 @@ public class VenusFile {
 
     public void setLength(final long l) throws RemoteException, IOException {
         fich.setLength(l);
-        tamNuevo = fich.length();
+       // tamNuevo = fich.length();
     }
 
     public void close() throws RemoteException, IOException {
-        if (escrito == true) { // si se ha escrito en el fichero que esta en caché
-            //System.out.println("he escrito");
+        //System.out.println("length: "+ fich.length());
+        //System.out.println("nuevo: "+tamNuevo);
+        //System.out.println("viejo: "+tamViejo);
+        if (escrito == true ) { // si se ha escrito en el fichero que esta en caché
             fich.seek(0); // para poder copiarlo hay que hacerlo desde el principio
             vWriter = venus.getVi().upload(this.fileName, modo);
-
-             byte[] array = new byte [this.venus.getBlocksize()];
-            // es necesario escribir el fichero bloque a bloque
-            while (this.fich.read(array) > 0) {
+           /*  if (fich.length() != tamViejo){
+                vWriter.setLength(fich.length()); //esto en en original no lo tenía
+            } */
+            vWriter.seek(0);
+            byte[] array = new byte [this.venus.getBlocksize()];
+            int num;
+            while ((num =this.fich.read(array)) > 0) {
+                if (num<this.venus.getBlocksize()){ //sino se hace esto no funciona (misma logica que en el read)
+                    byte [] res = new byte [num];
+                    for (int i=0; i<num; i++){
+                        res[i]=array[i];
+                    }
+                    vWriter.write(res);
+                }
+                else{
                     vWriter.write(array);
+                }
             } 
             vWriter.close();
         }  
-        if (tamNuevo != tamViejo) { // si los tamaños son distintos hay que actualizarlos
-            //System.out.println("tamaños distintos");
+        if (fich.length() != tamViejo) { // si los tamaños son distintos hay que actualizarlos
             vWriter = venus.getVi().upload(this.fileName, modo);
-            vWriter.setLength(tamNuevo);
+            vWriter.setLength(fich.length());
             vWriter.close();
-        }
+        } 
         fich.close();
     }
 
