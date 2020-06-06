@@ -10,12 +10,14 @@ public class Venus {
     private int port;
     private int blocksize;
     private Vice vi;
+    private VenusCB cb;
 
     public Venus() throws RemoteException, MalformedURLException, NotBoundException {
         this.host= System.getenv().get("REGISTRY_HOST");
         this.port= Integer.parseInt(System.getenv().get("REGISTRY_PORT"));
         this.blocksize= Integer.parseInt(System.getenv().get("BLOCKSIZE"));
         this.vi=(Vice)Naming.lookup("//" + this.host + ":" + this.port + "/AFS");
+        this.cb= new VenusCBImpl();
     }
 
     public String getHost(){
@@ -32,6 +34,10 @@ public class Venus {
 
     public Vice getVi(){
         return this.vi;
+    }
+    
+    public VenusCB getCb(){
+        return this.cb;
     }
 
 }

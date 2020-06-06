@@ -58,7 +58,7 @@ class Test {
             }
         }
         catch (IOException e) {
-            System.out.println("Excepción de E/S");
+            System.out.println("Excepción de E/S en read");
         }
         return res;
     }
@@ -92,7 +92,7 @@ class Test {
             }
         }
         catch (IOException e) {
-            System.out.println("Excepción de E/S");
+            System.out.println("Excepción de E/S en write");
         }
         return res;
     }
@@ -119,7 +119,7 @@ class Test {
             }
         }
         catch (IOException e) {
-            System.out.println("Excepción de E/S");
+            System.out.println("Excepción de E/S en seek");
         }
         return res;
     }
@@ -147,7 +147,7 @@ class Test {
             }
         }
         catch (IOException e) {
-            System.out.println("Excepción de E/S");
+            System.out.println("Excepción de E/S en set length");
         }
         return res;
     }
@@ -173,7 +173,7 @@ class Test {
              }
         }
         catch (IOException e) {
-            System.out.println("Excepción de E/S");
+            System.out.println("Excepción de E/S en cerrar");
         }
         return res;
     }

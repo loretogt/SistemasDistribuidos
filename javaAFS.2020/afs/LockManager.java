@@ -14,7 +14,7 @@ public class LockManager {
 	}
     }
     private HashMap<String, InfoLock> mapLock;
-
+	
     public LockManager() {
 	    mapLock = new HashMap<String, InfoLock>();
     }
